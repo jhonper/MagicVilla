@@ -2,6 +2,7 @@
 using MagicVilla_API.Datos;
 using MagicVilla_API.Modelos;
 using MagicVilla_API.Modelos.DTO;
+using MagicVilla_API.Repositorio.IRepositorio;
 using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.JsonPatch;
 using Microsoft.AspNetCore.Mvc;
@@ -16,14 +17,17 @@ namespace MagicVilla_API.Controllers
     public class VillaController : ControllerBase
     {
         private readonly ILogger<VillaController> _logger;
-        private readonly ApplicationDbContext _db;
+        //private readonly ApplicationDbContext _db;
+        private readonly IVillaRepositorio _villaRepo;
         private readonly IMapper _mapper;
 
         // Constructor
-        public VillaController(ILogger<VillaController> logger, ApplicationDbContext db, IMapper mapper)
+        //public VillaController(ILogger<VillaController> logger, ApplicationDbContext db, IMapper mapper)
+        public VillaController(ILogger<VillaController> logger, IVillaRepositorio villaRepo, IMapper mapper)
         {
             _logger = logger;
-            _db = db;
+            //_db = db;
+            _villaRepo = villaRepo;
             _mapper = mapper;
         }
 
@@ -38,7 +42,8 @@ namespace MagicVilla_API.Controllers
             //return Ok(VillaStore.villaLista);
             /*return Ok(_db.Villas.ToList());*/ // traemos todas las villas
 
-            IEnumerable<Villa> villaList = await _db.Villas.ToListAsync(); // obtengo las villas 
+            //IEnumerable<Villa> villaList = await _db.Villas.ToListAsync(); // obtengo las villas 
+            IEnumerable<Villa> villaList = await _villaRepo.ObtenerTodos();
 
             //return Ok(await _db.Villas.ToListAsync()); // antes de automapper
             return Ok(_mapper.Map<IEnumerable<VillaDTO>>(villaList));
@@ -62,7 +67,8 @@ namespace MagicVilla_API.Controllers
             }
             //var villa = VillaStore.villaLista.FirstOrDefault(v => v.Id == id);
             //var villa = _db.Villas.FirstOrDefault(v => v.Id == id);
-            var villa = await _db.Villas.FirstOrDefaultAsync(v => v.Id == id); // asincrono
+            //var villa = await _db.Villas.FirstOrDefaultAsync(v => v.Id == id);*/ // asincrono
+            var villa = await _villaRepo.Obtener(v => v.Id == id);
 
             if (villa == null)
             {
@@ -90,7 +96,8 @@ namespace MagicVilla_API.Controllers
             // validación personalizada, comprobar que no ingresen nombres repetidas
             // if (VillaStore.villaLista.FirstOrDefault(v => v.Nombre.ToLower() == villaDTO.Nombre.ToLower()) != null)
             //if(_db.Villas.FirstOrDefault(v => v.Nombre.ToLower() == villaDTO.Nombre.ToLower()) != null)
-            if (await _db.Villas.FirstOrDefaultAsync(v => v.Nombre.ToLower() == createDTO.Nombre.ToLower()) != null)
+            //if (await _db.Villas.FirstOrDefaultAsync(v => v.Nombre.ToLower() == createDTO.Nombre.ToLower()) != null)
+            if (await _villaRepo.Obtener(v => v.Nombre.ToLower() == createDTO.Nombre.ToLower()) != null)
             {
                 ModelState.AddModelError("NombreExiste", "La Villa con ese nombre ya existe"); //("nombre validación", "Mensaje a mostrar")
                 return BadRequest(ModelState);
@@ -128,8 +135,9 @@ namespace MagicVilla_API.Controllers
 
             // agregar registro a la base de datos
             //_db.Villas.Add(modelo);
-            await _db.Villas.AddAsync(modelo); // asincrono
-            await _db.SaveChangesAsync();
+            //await _db.Villas.AddAsync(modelo); // asincrono
+            await _villaRepo.Crear(modelo);
+            //await _db.SaveChangesAsync(); // el SaveChanges ya viene incorporado en el Crear
 
             //return Ok(villaDTO);
             //return CreatedAtRoute("GetVilla", new { id = villaDTO.Id }, villaDTO);
@@ -149,7 +157,8 @@ namespace MagicVilla_API.Controllers
             }
             //var villa = VillaStore.villaLista.FirstOrDefault(v=> v.Id == id);
             //var villa = _db.Villas.FirstOrDefault(v => v.Id == id);
-            var villa = await _db.Villas.FirstOrDefaultAsync(v => v.Id == id);
+            //var villa = await _db.Villas.FirstOrDefaultAsync(v => v.Id == id);
+            var villa = await _villaRepo.Obtener(v => v.Id == id);
 
             if (villa == null) 
             {
@@ -157,8 +166,9 @@ namespace MagicVilla_API.Controllers
             }
 
             //VillaStore.villaLista.Remove(villa);
-            _db.Villas.Remove(villa); // Remove no tiene método asíncrono
-            await _db.SaveChangesAsync();
+            /*_db.Villas.Remove(villa);*/ // Remove no tiene método asíncrono
+            _villaRepo.Remover(villa);
+            //await _db.SaveChangesAsync(); // ya viene incorporado
 
             return NoContent();
         }
@@ -195,8 +205,9 @@ namespace MagicVilla_API.Controllers
             Villa modelo = _mapper.Map<Villa>(updateDTO); // este código reemplaza al modelo anterior 
 
             //_db.Update(modelo);
-            _db.Villas.Update(modelo); // Update no tiene método asíncrono
-            await _db.SaveChangesAsync() ;
+            /*_db.Villas.Update(modelo);*/ // Update no tiene método asíncrono
+            _villaRepo.Actualizar(modelo);
+            //await _db.SaveChangesAsync() ; // ya viene incorporado
 
             return NoContent();
         }
@@ -212,7 +223,8 @@ namespace MagicVilla_API.Controllers
             }
             //var villa = VillaStore.villaLista.FirstOrDefault(v => v.Id == id);
             //var villa = _db.Villas.FirstOrDefault(v => v.Id == id);
-            var villa = await _db.Villas.AsNoTracking().FirstOrDefaultAsync(v => v.Id == id);
+            //var villa = await _db.Villas.AsNoTracking().FirstOrDefaultAsync(v => v.Id == id);
+            var villa = await _villaRepo.Obtener(v => v.Id == id, tracked: false);
 
 
             //VillaDTO villaDTO = new VillaDTO { }
@@ -260,8 +272,9 @@ namespace MagicVilla_API.Controllers
             Villa modelo = _mapper.Map<Villa>(villaDTO);
 
             //
-            _db.Villas.Update(modelo); // No es método asíncrono
-            await _db.SaveChangesAsync();
+            //_db.Villas.Update(modelo); // No es método asíncrono
+            _villaRepo.Actualizar(modelo);
+            //await _db.SaveChangesAsync(); // ya viene incorporado en el método Grabar()
 
             return NoContent();
         }
