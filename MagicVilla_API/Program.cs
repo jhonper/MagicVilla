@@ -29,6 +29,8 @@ builder.Services.AddAutoMapper(typeof(MappingConfig));
 //builder.Services.AddSingleton
 builder.Services.AddScoped<IVillaRepositorio, VillaRepositorio>();
 
+builder.Services.AddScoped<INumeroVillaRepositorio, NumeroVillaRepositorio>();
+
 var app = builder.Build();
 
 // Configure the HTTP request pipeline.
